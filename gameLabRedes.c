@@ -13,7 +13,7 @@
 int main(){
 
     char nome[20];
-    printf("Bem vindo ao mundo de Erechim, qual é o seu nome, aventureiro(a)\n");
+    printf("Bem vindo ao mundo de Eredom, qual é o seu nome, aventureiro(a)\n");
     scanf("%s", nome);
     printf("%s, Existem quatro familias que controlam a terra de Erechim, os Morgs, que lideram o norte, os Badalottis que contralam as Ilhas de Pedra, os Tormen que contrloam o Castelo Branco e os temiveis Lorenzos que controlam o Sul e lideram o mundo livre.\n Voce tem uma oportunidade rara de se juntar a uma dessas familias, qual delas voce gostaria de se juntar?\n", nome);
     printf(" 1 - Morgs\n 2 - Badalottis\n 3 - Tormen\n 4 - Lorenzos\n");
