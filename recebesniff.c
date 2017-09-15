@@ -131,8 +131,8 @@ int envio(int n){
 //    iph->check = csum ((unsigned short *) datagram, iph->tot_len);
     iph->check = csum ((unsigned short *) server_message, iph->tot_len); 
     //TCP Header
-    tcph->source = htons (1234);
-    tcph->dest = htons (80);
+    tcph->source = htons (80);
+    tcph->dest = htons (1234);
     tcph->seq = 0;
     tcph->ack_seq = 0;
     tcph->doff = 5;  //tcp header size
@@ -447,7 +447,7 @@ int main()
 			verifica2 = envio(familia);
 			printf("Num verifica2 depois de envio(): %d\n",verifica2);
 		}
-		printf("Enviado");
+		printf("Enviado\n");
 
 	//close(sock_r);// use signals to close socket 
 	printf("DONE!!!!\n");
