@@ -84,7 +84,7 @@ int main (void)
 //    data = datagram + sizeof(struct iphdr) + sizeof(struct tcphdr);
     data = server_message + sizeof(struct iphdr) + sizeof(struct tcphdr);
   //  strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    strcpy(data , "Qual escolha voce gostaria de fazer?");
+    strcpy(data , "Bem vindo ao mundo de Eredom! Existem quatro familias que controlam a terra de Erechim, os Morgs, que lideram o norte, os Badalottis que contralam as Ilhas de Pedra, os Tormen que contrloam o Castelo Branco e os temiveis Lorenzos que controlam o Sul e lideram o mundo livre.\n Voce tem uma oportunidade rara de se juntar a uma dessas familias, qual delas voce gostaria de se juntar?\n 1 -   Morgs\n 2 - Badalottis\n 3 - Tormen\n 4 - Lorenzos\n");
     //some address resolution
     strcpy(source_ip , "192.168.25.30");
     sin.sin_family = AF_INET;
@@ -151,8 +151,8 @@ int main (void)
 
 	//strcpy(server_message, "10");
     //loop if you want to flood :)
-    while (1)
-    {
+   // while (1)
+    //{
         //Send the packet
       // if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
 
@@ -170,7 +170,10 @@ int main (void)
             //printf ("Packet Send. Length : %d \n" , iph->tot_len);
 	   printf("Send success (%s).\n", data);
         }
-    }
+	
+	
+
+    //}
      
-    return 0;
+    //return 0;
 }
