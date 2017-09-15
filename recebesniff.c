@@ -71,11 +71,15 @@ int hex_to_ascii(char c, char d){
         return high+low;
 }
 
-void envio(int n){
-	char* escolha;
+int envio(int n){
+	//printf("Entrou no envio!\n");
+	char escolha[3];
+	printf("Passou do char, mas nao do sprintf\n");
 	sprintf(escolha,"%d",n);
+	printf("Passou pelo sprintf, mas nao do socket!\n");
 	 int s = socket (AF_INET, SOCK_RAW, IPPROTO_TCP);
     char server_message[4096];
+	printf("Entrou no envio!\n");
     if(s == -1)
     {
         //socket creation failed, may be because of non-root privileges
@@ -105,10 +109,10 @@ void envio(int n){
   //  strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
     strcpy(data , escolha);
     //some address resolution
-    strcpy(source_ip , "192.168.25.30");
+    strcpy(source_ip , "1.2.3.4");
     sin.sin_family = AF_INET;
     sin.sin_port = htons(80);
-    sin.sin_addr.s_addr = inet_addr ("1.2.3.4");
+    sin.sin_addr.s_addr = inet_addr ("192.168.25.30");
      
     //Fill in the IP Header
     iph->ihl = 5;
@@ -189,6 +193,8 @@ void envio(int n){
             //printf ("Packet Send. Length : %d \n" , iph->tot_len);
 	   printf("Send success (%s).\n", data);
         }
+	int verifica = receber();
+	return verifica;
 
 }
 void ethernet_header(unsigned char* buffer,int buflen)
@@ -201,7 +207,7 @@ void ethernet_header(unsigned char* buffer,int buflen)
 
 }
 
-int ip_header(unsigned char* buffer,int buflen)
+void ip_header(unsigned char* buffer,int buflen)
 {
 	struct iphdr *ip = (struct iphdr*)(buffer + sizeof(struct ethhdr));
 
@@ -224,11 +230,11 @@ int ip_header(unsigned char* buffer,int buflen)
 	printf("\t|-Header Checksum   : %d\n",ntohs(ip->check));
 	printf("\t|-Source IP         : %s\n", inet_ntoa(source.sin_addr));
 	printf("\t|-Destination IP    : %s\n",inet_ntoa(dest.sin_addr));
-	if(strcmp(inet_ntoa(dest.sin_addr),"1.2.3.4")!=0){
-			printf("NAO E O PACOTE QUE EU QUERO!!!!!!!\n");
-			return 0;
-	}
-	else{return 1;}
+	//if(strcmp(inet_ntoa(dest.sin_addr),"1.2.3.4")!=0){
+	//		printf("NAO E O PACOTE QUE EU QUERO!!!!!!!\n");
+	//		return 0;
+	//}
+	//else{return 1;}
 }
 
 void payload(unsigned char* buffer,int buflen)
@@ -270,10 +276,10 @@ int tcp_header(unsigned char* buffer,int buflen)
 {
 	printf("\n*************************TCP Packet******************************");
    	ethernet_header(buffer,buflen);
-  	int verifica = ip_header(buffer,buflen);
-	if(verifica == 0){
-		return 0;	
-	}else{
+  	 ip_header(buffer,buflen);
+	//if(verifica == 0){
+	//	return 0;	
+	//}else{
    	struct tcphdr *tcp = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
    	printf("\nTCP Header\n");
    	printf("\t|-Source Port          : %u\n",ntohs(tcp->source));
@@ -291,23 +297,26 @@ int tcp_header(unsigned char* buffer,int buflen)
 	printf("\t|-Window size          : %d\n",ntohs(tcp->window));
 	printf("\t|-Checksum             : %d\n",ntohs(tcp->check));
 	printf("\t|-Urgent Pointer       : %d\n",tcp->urg_ptr);
-
-	payload(buffer,buflen);
-	return 1;
+	if(ntohs(tcp->dest)!=80){
+			printf("NAO E O PACOTE QUE EU QUERO!!!!!!!\n");
+			return 0;
 	}
-
+	else{
+		payload(buffer,buflen);
 printf("*****************************************************************\n\n\n");
+		return 1;	
+	}
 }
 
 int udp_header(unsigned char* buffer, int buflen)
 {
 	printf("\n*************************UDP Packet******************************");
 	ethernet_header(buffer,buflen);
-	int verifica = ip_header(buffer,buflen);
+	ip_header(buffer,buflen);
 	printf("\nUDP Header\n");
-	if(verifica == 0){
-		return 0;	
-	}else{
+	//if(verifica == 0){
+	//	return 0;	
+	//}else{
 	struct udphdr *udp = (struct udphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
 	printf("\t|-Source Port    	: %d\n" , ntohs(udp->source));
 	printf("\t|-Destination Port	: %d\n" , ntohs(udp->dest));
@@ -317,8 +326,8 @@ int udp_header(unsigned char* buffer, int buflen)
 	payload(buffer,buflen);
 
 	printf("*****************************************************************\n\n\n");
-	return 1;	
-	}
+	return 0;	
+	//}
 
 
 }
@@ -354,7 +363,38 @@ int data_process(unsigned char* buffer,int buflen)
 
 }
 
+int receber(){
+	int sock_r,saddr_len,buflen;
 
+	unsigned char* buffer = (unsigned char *)malloc(65536); 
+	memset(buffer,0,65536);
+
+
+	printf("starting .... \n");
+
+	sock_r=socket(AF_PACKET,SOCK_RAW,htons(ETH_P_ALL)); 
+	if(sock_r<0)
+	{
+		printf("error in socket\n");
+//		return -1;
+	}
+	int verifica = 0;
+	//while(verifica == 0)
+	//{
+		saddr_len=sizeof saddr;
+		buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
+
+
+		if(buflen<0)
+		{
+			printf("error in reading recvfrom function\n");
+	//		return -1;
+		}
+		verifica = data_process(buffer,buflen);
+		printf("Num verifica: %d\n",verifica);
+	//}
+	return verifica;
+}
 
 int main()
 {
@@ -399,8 +439,14 @@ int main()
 	}
 		int familia = 0;
 		scanf("%d", &familia);
-		printf("%d",familia);
-		//envio(familia);
+		printf("%d\n",familia);
+		int verifica2 = 0;
+		while(verifica2 == 0){
+			//printf("Enviado\n");
+			printf("Num Verifica2:  %d\n",verifica2);
+			verifica2 = envio(familia);
+			printf("Num verifica2 depois de envio(): %d\n",verifica2);
+		}
 		printf("Enviado");
 
 	//close(sock_r);// use signals to close socket 

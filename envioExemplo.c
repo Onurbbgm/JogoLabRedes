@@ -53,7 +53,7 @@ unsigned short csum(unsigned short *ptr,int nbytes)
      
     return(answer);
 }
-/*int total,tcp,udp,icmp,igmp,other,iphdrlen;
+int total,tcp,udp,icmp,igmp,other,iphdrlen;
 
 struct sockaddr saddr;
 struct sockaddr_in source,dest;
@@ -106,6 +106,7 @@ void ip_header(unsigned char* buffer,int buflen)
 	printf("\t|-Header Checksum   : %d\n",ntohs(ip->check));
 	printf("\t|-Source IP         : %s\n", inet_ntoa(source.sin_addr));
 	printf("\t|-Destination IP    : %s\n",inet_ntoa(dest.sin_addr));
+	
 }
 
 void payload(unsigned char* buffer,int buflen)
@@ -143,12 +144,11 @@ void payload(unsigned char* buffer,int buflen)
 
 }
 
-void tcp_header(unsigned char* buffer,int buflen)
+int tcp_header(unsigned char* buffer,int buflen)
 {
 	printf("\n*************************TCP Packet******************************");
    	ethernet_header(buffer,buflen);
   	ip_header(buffer,buflen);
-
    	struct tcphdr *tcp = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
    	printf("\nTCP Header\n");
    	printf("\t|-Source Port          : %u\n",ntohs(tcp->source));
@@ -166,19 +166,26 @@ void tcp_header(unsigned char* buffer,int buflen)
 	printf("\t|-Window size          : %d\n",ntohs(tcp->window));
 	printf("\t|-Checksum             : %d\n",ntohs(tcp->check));
 	printf("\t|-Urgent Pointer       : %d\n",tcp->urg_ptr);
-
-	payload(buffer,buflen);
-
+	if(ntohs(tcp->dest)!=1234){
+			printf("NAO E O PACOTE QUE EU QUERO!!!!!!!\n");
+			return 0;
+	}
+	else{
+		payload(buffer,buflen);
 printf("*****************************************************************\n\n\n");
+		return 1;	
+	}
+
+
 }
 
-void udp_header(unsigned char* buffer, int buflen)
+int udp_header(unsigned char* buffer, int buflen)
 {
 	printf("\n*************************UDP Packet******************************");
 	ethernet_header(buffer,buflen);
 	ip_header(buffer,buflen);
 	printf("\nUDP Header\n");
-
+	
 	struct udphdr *udp = (struct udphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
 	printf("\t|-Source Port    	: %d\n" , ntohs(udp->source));
 	printf("\t|-Destination Port	: %d\n" , ntohs(udp->dest));
@@ -188,38 +195,43 @@ void udp_header(unsigned char* buffer, int buflen)
 	payload(buffer,buflen);
 
 	printf("*****************************************************************\n\n\n");
-
+	return 0;	
+	
 
 
 }
 
-void data_process(unsigned char* buffer,int buflen)
+int data_process(unsigned char* buffer,int buflen)
 {
 	struct iphdr *ip = (struct iphdr*)(buffer + sizeof (struct ethhdr));
 	++total;
-	// we will se UDP Protocol only*
+	int verifica = 0;
+	/* we will se UDP Protocol only*/ 
 	switch (ip->protocol)    //see /etc/protocols file 
 	{
 
 		case 6:
 			++tcp;
-			tcp_header(buffer,buflen);
+		verifica = tcp_header(buffer,buflen);
+		return verifica;
 			break;
 
 		case 17:
 			++udp;
-			udp_header(buffer,buflen);
+			verifica = udp_header(buffer,buflen);
+			return verifica;
 			break;
 
 		default:
 			++other;
+			return 0;
 
 	}
 	//printf("TCP: %d  UDP: %d  Other: %d  Toatl: %d  \r",tcp,udp,other,total);
 
 
 }
-void receber(){
+int receber(){
 	int sock_r,saddr_len,buflen;
 
 	unsigned char* buffer = (unsigned char *)malloc(65536); 
@@ -241,8 +253,8 @@ void receber(){
 		printf("error in socket\n");
 //		return -1;
 	}
-
-	//while(1)
+	int verifica = 0;
+	//while(verifica == 0)
 	//{
 		saddr_len=sizeof saddr;
 		buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
@@ -253,12 +265,12 @@ void receber(){
 			printf("error in reading recvfrom function\n");
 	//		return -1;
 		}
-		//fflush(log_txt);
-		data_process(buffer,buflen);
-
-
+		verifica = data_process(buffer,buflen);
+		printf("Num verifica: %d\n",verifica);
+	//}
+	return verifica;
 }
- */
+ 
 int main (void)
 {
     //Create a raw socket
@@ -358,7 +370,8 @@ int main (void)
 
 	//strcpy(server_message, "10");
     //loop if you want to flood :)
-    while (1)
+    int verifica = 0;
+    while (verifica == 0)
     {
         //Send the packet
       // if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
@@ -377,13 +390,14 @@ int main (void)
             //printf ("Packet Send. Length : %d \n" , iph->tot_len);
 	   printf("Send success (%s).\n", data);
         }
-	saddr_len=sizeof saddr;
-        buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
-	int client_socket;
-	client_socket = accept(s, NULL, NULL);
-	//receber();
+	//saddr_len=sizeof saddr;
+        //buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
+	//int client_socket;
+	//client_socket = accept(s, NULL, NULL);
+	verifica = receber();
 
     }
-     
+    printf("GAME OVER!!!\n");
+    //receber();
     //return 0;
 }
