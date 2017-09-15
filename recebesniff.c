@@ -1,5 +1,5 @@
 /* Note: run this program as root user
- * Author:Subodh Saxena 
+ * cliente 
  */
 #include<stdio.h>
 #include<malloc.h>
@@ -22,7 +22,41 @@ int total,tcp,udp,icmp,igmp,other,iphdrlen;
 
 struct sockaddr saddr;
 struct sockaddr_in source,dest;
-
+struct pseudo_header
+{
+    u_int32_t source_address;
+    u_int32_t dest_address;
+    u_int8_t placeholder;
+    u_int8_t protocol;
+    u_int16_t tcp_length;
+};
+ 
+/*
+    Generic checksum calculation function
+*/
+unsigned short csum(unsigned short *ptr,int nbytes) 
+{
+    register long sum;
+    unsigned short oddbyte;
+    register short answer;
+ 
+    sum=0;
+    while(nbytes>1) {
+        sum+=*ptr++;
+        nbytes-=2;
+    }
+    if(nbytes==1) {
+        oddbyte=0;
+        *((u_char*)&oddbyte)=*(u_char*)ptr;
+        sum+=oddbyte;
+    }
+ 
+    sum = (sum>>16)+(sum & 0xffff);
+    sum = sum + (sum>>16);
+    answer=(short)~sum;
+     
+    return(answer);
+}
 int hex_to_int(char c){
         int first = c / 16 - 3;
         int second = c % 16;
@@ -37,7 +71,126 @@ int hex_to_ascii(char c, char d){
         return high+low;
 }
 
+void envio(int n){
+	char* escolha;
+	sprintf(escolha,"%d",n);
+	 int s = socket (AF_INET, SOCK_RAW, IPPROTO_TCP);
+    char server_message[4096];
+    if(s == -1)
+    {
+        //socket creation failed, may be because of non-root privileges
+        perror("Failed to create socket");
+       // exit(1);
+    }
+     
+    //Datagram to represent the packet
+    char datagram[4096] , source_ip[32] , *data , *pseudogram;
+     
+    //zero out the packet buffer
+    //memset (datagram, 0, 4096);
+    memset (server_message, 0, 4096);
+     
+    //IP header
+//    struct iphdr *iph = (struct iphdr *) datagram;
+    struct iphdr *iph = (struct iphdr *) server_message; 
+    //TCP header
+//    struct tcphdr *tcph = (struct tcphdr *) (datagram + sizeof (struct ip));
+    struct tcphdr *tcph = (struct tcphdr *) (server_message + sizeof (struct ip));
+    struct sockaddr_in sin;
+    struct pseudo_header psh;
+     
+    //Data part
+//    data = datagram + sizeof(struct iphdr) + sizeof(struct tcphdr);
+    data = server_message + sizeof(struct iphdr) + sizeof(struct tcphdr);
+  //  strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    strcpy(data , escolha);
+    //some address resolution
+    strcpy(source_ip , "192.168.25.30");
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(80);
+    sin.sin_addr.s_addr = inet_addr ("1.2.3.4");
+     
+    //Fill in the IP Header
+    iph->ihl = 5;
+    iph->version = 4;
+    iph->tos = 0;
+    iph->tot_len = sizeof (struct iphdr) + sizeof (struct tcphdr) + strlen(data);
+    iph->id = htonl (54321); //Id of this packet
+    iph->frag_off = 0;
+    iph->ttl = 255;
+    iph->protocol = IPPROTO_TCP;
+    iph->check = 0;      //Set to 0 before calculating checksum
+    iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
+    iph->daddr = sin.sin_addr.s_addr;
+     
+    //Ip checksum
+//    iph->check = csum ((unsigned short *) datagram, iph->tot_len);
+    iph->check = csum ((unsigned short *) server_message, iph->tot_len); 
+    //TCP Header
+    tcph->source = htons (1234);
+    tcph->dest = htons (80);
+    tcph->seq = 0;
+    tcph->ack_seq = 0;
+    tcph->doff = 5;  //tcp header size
+    tcph->fin=0;
+    tcph->syn=1;
+    tcph->rst=0;
+    tcph->psh=0;
+    tcph->ack=0;
+    tcph->urg=0;
+    tcph->window = htons (5840); /* maximum allowed window size */
+    tcph->check = 0; //leave checksum 0 now, filled later by pseudo header
+    tcph->urg_ptr = 0;
+     
+    //Now the TCP checksum
+    psh.source_address = inet_addr( source_ip );
+    psh.dest_address = sin.sin_addr.s_addr;
+    psh.placeholder = 0;
+    psh.protocol = IPPROTO_TCP;
+    psh.tcp_length = htons(sizeof(struct tcphdr) + strlen(data) );
+     
+    int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr) + strlen(data);
+    pseudogram = malloc(psize);
+     
+    memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+    memcpy(pseudogram + sizeof(struct pseudo_header) , tcph , sizeof(struct tcphdr) + strlen(data));
+     
+    tcph->check = csum( (unsigned short*) pseudogram , psize);
+     
+    //IP_HDRINCL to tell the kernel that headers are included in the packet
+    int one = 1;
+    const int *val = &one;
+     
+    if (setsockopt (s, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
+    {
+        perror("Error setting IP_HDRINCL");
+        //exit(0);
+    }
+     //server_message[4096] = "You have reached the server(exemplo)!";
 
+	//strcpy(server_message, "10");
+    //loop if you want to flood :)
+   // while (1)
+    //{
+        //Send the packet
+      // if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+
+        //{
+          //  perror("sendto failed");
+        //}
+       if (sendto (s, server_message, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+
+       {
+            perror("sendto failed");
+        }
+        //Data send successfully
+        else
+        {
+            //printf ("Packet Send. Length : %d \n" , iph->tot_len);
+	   printf("Send success (%s).\n", data);
+        }
+
+}
 void ethernet_header(unsigned char* buffer,int buflen)
 {
 	struct ethhdr *eth = (struct ethhdr *)(buffer);
@@ -48,7 +201,7 @@ void ethernet_header(unsigned char* buffer,int buflen)
 
 }
 
-void ip_header(unsigned char* buffer,int buflen)
+int ip_header(unsigned char* buffer,int buflen)
 {
 	struct iphdr *ip = (struct iphdr*)(buffer + sizeof(struct ethhdr));
 
@@ -71,6 +224,11 @@ void ip_header(unsigned char* buffer,int buflen)
 	printf("\t|-Header Checksum   : %d\n",ntohs(ip->check));
 	printf("\t|-Source IP         : %s\n", inet_ntoa(source.sin_addr));
 	printf("\t|-Destination IP    : %s\n",inet_ntoa(dest.sin_addr));
+	if(strcmp(inet_ntoa(dest.sin_addr),"1.2.3.4")!=0){
+			printf("NAO E O PACOTE QUE EU QUERO!!!!!!!\n");
+			return 0;
+	}
+	else{return 1;}
 }
 
 void payload(unsigned char* buffer,int buflen)
@@ -108,12 +266,14 @@ void payload(unsigned char* buffer,int buflen)
 
 }
 
-void tcp_header(unsigned char* buffer,int buflen)
+int tcp_header(unsigned char* buffer,int buflen)
 {
 	printf("\n*************************TCP Packet******************************");
    	ethernet_header(buffer,buflen);
-  	ip_header(buffer,buflen);
-
+  	int verifica = ip_header(buffer,buflen);
+	if(verifica == 0){
+		return 0;	
+	}else{
    	struct tcphdr *tcp = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
    	printf("\nTCP Header\n");
    	printf("\t|-Source Port          : %u\n",ntohs(tcp->source));
@@ -133,17 +293,21 @@ void tcp_header(unsigned char* buffer,int buflen)
 	printf("\t|-Urgent Pointer       : %d\n",tcp->urg_ptr);
 
 	payload(buffer,buflen);
+	return 1;
+	}
 
 printf("*****************************************************************\n\n\n");
 }
 
-void udp_header(unsigned char* buffer, int buflen)
+int udp_header(unsigned char* buffer, int buflen)
 {
 	printf("\n*************************UDP Packet******************************");
 	ethernet_header(buffer,buflen);
-	ip_header(buffer,buflen);
+	int verifica = ip_header(buffer,buflen);
 	printf("\nUDP Header\n");
-
+	if(verifica == 0){
+		return 0;	
+	}else{
 	struct udphdr *udp = (struct udphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
 	printf("\t|-Source Port    	: %d\n" , ntohs(udp->source));
 	printf("\t|-Destination Port	: %d\n" , ntohs(udp->dest));
@@ -153,31 +317,36 @@ void udp_header(unsigned char* buffer, int buflen)
 	payload(buffer,buflen);
 
 	printf("*****************************************************************\n\n\n");
-
+	return 1;	
+	}
 
 
 }
 
-void data_process(unsigned char* buffer,int buflen)
+int data_process(unsigned char* buffer,int buflen)
 {
 	struct iphdr *ip = (struct iphdr*)(buffer + sizeof (struct ethhdr));
 	++total;
+	int verifica = 0;
 	/* we will se UDP Protocol only*/ 
 	switch (ip->protocol)    //see /etc/protocols file 
 	{
 
 		case 6:
 			++tcp;
-			tcp_header(buffer,buflen);
+		verifica = tcp_header(buffer,buflen);
+		return verifica;
 			break;
 
 		case 17:
 			++udp;
-			udp_header(buffer,buflen);
+			verifica = udp_header(buffer,buflen);
+			return verifica;
 			break;
 
 		default:
 			++other;
+			return 0;
 
 	}
 	//printf("TCP: %d  UDP: %d  Other: %d  Toatl: %d  \r",tcp,udp,other,total);
@@ -211,8 +380,8 @@ int main()
 		printf("error in socket\n");
 		return -1;
 	}
-
-	while(1)
+	int verifica = 0;
+	while(verifica==0)
 	{
 		saddr_len=sizeof saddr;
 		buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
@@ -224,11 +393,17 @@ int main()
 			return -1;
 		}
 		//fflush(log_txt);
-		data_process(buffer,buflen);
+		verifica = data_process(buffer,buflen);
+		printf("Num verifica: %d\n",verifica);
 
 	}
+		int familia = 0;
+		scanf("%d", &familia);
+		printf("%d",familia);
+		//envio(familia);
+		printf("Enviado");
 
-	close(sock_r);// use signals to close socket 
+	//close(sock_r);// use signals to close socket 
 	printf("DONE!!!!\n");
 
 }
