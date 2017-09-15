@@ -1,11 +1,3 @@
-//
-//  recepcao_socket.c
-//  
-//
-//  Created by Bruno Moretto on 8/29/17.
-//
-//
-
 /*-------------------------------------------------------------*/
 /* Exemplo Socket Raw - Captura pacotes recebidos na interface */
 /*-------------------------------------------------------------*/
@@ -33,35 +25,40 @@
 // Atencao!! Confira no /usr/include do seu sisop o nome correto
 // das estruturas de dados dos protocolos.
 
-unsigned char buff1[BUFFSIZE]; // buffer de recepcao
+  unsigned char buff1[BUFFSIZE]; // buffer de recepcao
 
-int sockd;
-int on;
-struct ifreq ifr;
+  int sockd;
+  int on;
+  struct ifreq ifr;
 
 int main(int argc,char *argv[])
 {
     /* Criacao do socket. Todos os pacotes devem ser construidos a partir do protocolo Ethernet. */
     /* De um "man" para ver os parametros.*/
     /* htons: converte um short (2-byte) integer para standard network byte order. */
-    if((sockd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
-        printf("Erro na criacao do socket.\n");
-        exit(1);
+    printf("Comecou");
+    if((sockd = socket(PF_PACKET, SOCK_RAW,  htons(ETH_P_ALL))) < 0) {
+       printf("Erro na criacao do socket.\n");
+       exit(1);
     }
-    
-    // O procedimento abaixo eh utilizado para "setar" a interface em modo promiscuo
-    strcpy(ifr.ifr_name, "eth0");
-    if(ioctl(sockd, SIOCGIFINDEX, &ifr) < 0)
-        printf("erro no ioctl!");
-    ioctl(sockd, SIOCGIFFLAGS, &ifr);
-    ifr.ifr_flags |= IFF_PROMISC;
-    ioctl(sockd, SIOCSIFFLAGS, &ifr);
-    
-    // recepcao de pacotes
-    while (1) {
-        recv(sockd,(char *) &buff1, sizeof(buff1), 0x0);
-        // impress�o do conteudo - exemplo Endereco Destino e Endereco Origem
-        printf("MAC Destino: %x:%x:%x:%x:%x:%x \n", buff1[0],buff1[1],buff1[2],buff1[3],buff1[4],buff1[5]);
-        printf("MAC Origem:  %x:%x:%x:%x:%x:%x \n\n", buff1[6],buff1[7],buff1[8],buff1[9],buff1[10],buff1[11]);
-    }
+
+	// O procedimento abaixo eh utilizado para "setar" a interface em modo promiscuo
+	strcpy(ifr.ifr_name, "wlan0");
+	if(ioctl(sockd, SIOCGIFINDEX, &ifr) < 0)
+		printf("erro no ioctl!");
+	ioctl(sockd, SIOCGIFFLAGS, &ifr);
+	ifr.ifr_flags |= IFF_PROMISC;
+	ioctl(sockd, SIOCSIFFLAGS, &ifr);
+	char server_response[4096];
+	// recepcao de pacotes
+	while (1) {
+		
+   		//recv(sockd,(char *) &buff1, sizeof(buff1), 0x0);
+		recv(sockd, &server_response, sizeof(server_response), 0);
+		printf("The server sent the data: %s\n", server_response);
+		// impress�o do conteudo - exemplo Endereco Destino e Endereco Origem
+		//printf("MAC Destino: %x:%x:%x:%x:%x:%x \n", buff1[0],buff1[1],buff1[2],buff1[3],buff1[4],buff1[5]);
+		//printf("MAC Origem:  %x:%x:%x:%x:%x:%x \n\n", buff1[6],buff1[7],buff1[8],buff1[9],buff1[10],buff1[11]);
+	}
 }
+
