@@ -1,10 +1,10 @@
-#include<stdio.h> //for printf
-#include<string.h> //memset
-#include<sys/socket.h>    //for socket ofcourse
-#include<stdlib.h> //for exit(0);
-#include<errno.h> //For errno - the error number
-#include<netinet/tcp.h>   //Provides declarations for tcp header
-#include<netinet/ip.h>    //Provides declarations for ip header
+#include<stdio.h> 
+#include<string.h> 
+#include<sys/socket.h>    
+#include<stdlib.h> 
+#include<errno.h> 
+#include<netinet/tcp.h>  
+#include<netinet/ip.h>    
 #include<netinet/udp.h>
 #include <malloc.h>
 #include <arpa/inet.h>  
@@ -26,7 +26,7 @@ struct pseudo_header
     u_int8_t protocol;
     u_int16_t tcp_length;
 };
- 
+ int escolha = 0;
 /*
     Generic checksum calculation function
 */
@@ -112,6 +112,7 @@ void ip_header(unsigned char* buffer,int buflen)
 void payload(unsigned char* buffer,int buflen)
 {
 	int i=0;
+	int j = 0;
 	unsigned char * data = (buffer + iphdrlen  + sizeof(struct ethhdr) + sizeof(struct udphdr));
 	printf("\nData\n");
 	int remaining_data = buflen - (iphdrlen  + sizeof(struct ethhdr) + sizeof(struct udphdr));
@@ -121,6 +122,24 @@ void payload(unsigned char* buffer,int buflen)
 		//	printf("\n");
 		
 		printf("%c",data[i]);
+	}
+	for(j = 0; j<remaining_data;j++){
+		if(data[j]=='1'){
+			printf("o numero eh, %c:",data[j]);
+			escolha = 1;
+		}
+		if(data[j]=='2'){
+			printf("o numero eh, %c:",data[j]);
+			escolha = 2;
+		}	
+		if(data[j]=='3'){
+			printf("o numero eh, %c:",data[j]);
+			escolha = 3;
+		}
+		if(data[j]=='4'){
+			printf("o numero eh, %c:",data[j]);
+			escolha = 4;
+		}
 	}
 	
 	//printf("E o texto:\n");
@@ -237,13 +256,6 @@ int receber(){
 	unsigned char* buffer = (unsigned char *)malloc(65536); 
 	memset(buffer,0,65536);
 
-	//log_txt=fopen("log.txt","w");
-	//if(!log_txt)
-	//{
-	//	printf("unable to open log.txt\n");
-	//	return -1;
-
-	//}
 
 	printf("starting .... \n");
 
@@ -524,11 +536,27 @@ int main (void)
 	verifica = receber();
 
     }
-	//int verifica2 = 0;
-	//while(verifica2 == 0){
-	//	printf("segundo loop");
-	//	verifica2 = envio("game over!");	
-	//}	
+	int verifica2 = 0;
+	while(verifica2 == 0){
+		printf("segundo loop");
+		if(escolha == 1){
+			char* msg = "Bem vindo a familia dos Morgs!\n";
+			verifica2 = envio(msg);
+		}
+		if(escolha == 2){
+			char* msg = "Bem vindo a familia dos Badalloti!\n";
+			verifica2 = envio(msg);
+		}
+		if(escolha == 3){
+			char* msg = "Bem vindo a familia dos Tormen!\n";
+			verifica2 = envio(msg);
+		}
+		if(escolha == 4){
+			char* msg = "Bem vidno a familia dos Lorenzos!\n";
+			verifica2 = envio(msg);
+		}
+		//verifica2 = envio("game over!!");	
+	}	
 	
    printf("GAME OVER!!!\n");
     //receber();
